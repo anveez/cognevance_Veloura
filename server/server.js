@@ -28,6 +28,11 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(compression());
 app.use(cors({ origin: (process.env.CLIENT_URL || 'http://localhost:5173').split(','), credentials: true }));
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
+let dbPromise;
+const ready = () => (dbPromise ??= connectDB());
+app.use(async (_req, _res, next) => {
+  try { await ready(); next(); } catch (e) { dbPromise = null; next(e); }
+});
 
 // Razorpay webhook needs the raw body for signature checking, so it is mounted before express.json()
 app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), webhook);
@@ -46,10 +51,11 @@ app.use('/api/admin', adminRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-connectDB()
-  .then(() => app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`)))
-  .catch((err) => {
-    console.error('Could not connect to MongoDB:', err.message);
-    process.exit(1);
-  });
+export default app;
+
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000;
+  ready()
+    .then(() => app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`)))
+    .catch((err) => { console.error('Could not connect to MongoDB:', err.message); process.exit(1); });
+}
