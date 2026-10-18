@@ -52,8 +52,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 export default app;
-
-if (!process.env.VERCEL) {
+if (!process.env.VERCEL && !process.env.NETLIFY && !process.env.AWS_LAMBDA_FUNCTION_NAME)  {
   const PORT = process.env.PORT || 5000;
   ready()
     .then(() => app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`)))
