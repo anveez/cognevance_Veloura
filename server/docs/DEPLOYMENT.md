@@ -1,50 +1,150 @@
-# Deployment Guide (free tiers)
+# Atelier — Deployment Guide
 
-Order: **database → API → frontend → connect them.**
+## 1. Deployment Overview
 
-## 1. MongoDB Atlas
-1. Create a free M0 cluster at mongodb.com/atlas.
-2. Database Access → add a user with a strong password.
-3. Network Access → allow `0.0.0.0/0` (or your host's IPs).
-4. Connect → Drivers → copy the connection string, replace `<password>`, and add the database name: `mongodb+srv://user:pass@cluster.mongodb.net/atelier`.
-5. Seed it once from your computer: set that `MONGO_URI` in `server/.env`, then run `npm run seed`. Set `ADMIN_PASSWORD` to something strong before seeding, and change the demo customer password.
+Atelier is a MERN-stack perfume e-commerce application. The current deployment uses Vercel for the frontend and backend, with MongoDB for persistent data storage.
 
-## 2. API on Render (or Railway)
-1. Push the project to GitHub.
-2. Render → New → Web Service → pick the repo, set **Root Directory** to `server`.
-3. Build command `npm install`, start command `npm start`.
-4. Environment variables:
+### Live URLs
 
-| Variable | Value |
-|---|---|
-| NODE_ENV | production |
-| MONGO_URI | your Atlas string |
-| JWT_ACCESS_SECRET / JWT_REFRESH_SECRET | long random strings |
-| CLIENT_URL | your frontend URL (set after step 3), e.g. `https://atelier.vercel.app` |
-| CLOUDINARY_* | your Cloudinary values (recommended: Render's disk is not permanent, so local uploads would be lost) |
-| RAZORPAY_* | your keys (use test keys first) |
+- **Frontend:** [https://cognevance-veloura-rywd.vercel.app/](https://cognevance-veloura-rywd.vercel.app/)
+- **Backend:** [https://cognevance-veloura.vercel.app/](https://cognevance-veloura.vercel.app/)
+- **Health endpoint:** [https://cognevance-veloura.vercel.app/api/health](https://cognevance-veloura.vercel.app/api/health)
+- **GitHub repository:** [https://github.com/anveez/cognevance_Veloura](https://github.com/anveez/cognevance_Veloura)
 
-5. Note the URL, e.g. `https://atelier-api.onrender.com`. Check `/api/health`.
+These URLs retain their existing names even though the application brand is Atelier.
 
-## 3. Frontend on Vercel (or Netlify)
-1. Vercel → New Project → same repo, **Root Directory** `client`. Framework: Vite.
-2. Environment variable: `VITE_API_URL` = `https://atelier-api.onrender.com` (no trailing slash, no `/api`).
-3. `client/vercel.json` (included) makes page refreshes work with React Router. For Netlify, `client/public/_redirects` (included) does the same.
+## 2. MongoDB Atlas
 
-## 4. Connect them
-Set `CLIENT_URL` on the API to the final Vercel URL (comma-separate multiple origins) and redeploy. Cookies use `SameSite=None; Secure` in production, so both sites must use HTTPS (the free hosts do).
+1. Create a MongoDB Atlas cluster.
+2. Add a database user with a strong password.
+3. Configure network access for your deployment.
+4. Copy the MongoDB connection string and replace its placeholders.
+5. Add the connection string to the backend environment variable `MONGO_URI`.
+6. Run the seed script only when needed and after checking its behavior.
 
-## 5. Razorpay webhook
-Dashboard → Webhooks → URL `https://atelier-api.onrender.com/api/payment/webhook`, event `payment.captured`, secret = `RAZORPAY_WEBHOOK_SECRET`.
+Example connection string format:
 
-## Checklist
-- [ ] Admin password changed
-- [ ] Secrets are random and not in Git (`.env` is git-ignored)
-- [ ] Test order with Razorpay test card
-- [ ] Image upload works (Cloudinary)
-- [ ] Lighthouse run on the live site (aim for 90+)
+`mongodb+srv://<username>:<password>@<cluster-host>/atelier`
 
-Free Render services sleep after inactivity, so the first request can take about 30 seconds.
+Do not commit database credentials to GitHub. Avoid unrestricted network access where narrower access rules are practical.
 
-## Performance already built in
-Route-level code splitting, lazy admin/chart bundles, gzip on the API, long-cache static uploads, indexed queries. To go further, add `f_auto,q_auto` to Cloudinary URLs and a Redis cache for `/products`.
+## 3. Backend Deployment on Vercel
+
+The backend is deployed at:
+
+[https://cognevance-veloura.vercel.app/](https://cognevance-veloura.vercel.app/)
+
+The health endpoint is:
+
+[https://cognevance-veloura.vercel.app/api/health](https://cognevance-veloura.vercel.app/api/health)
+
+To update the backend:
+
+1. Commit and push changes to GitHub.
+2. Open the backend project in Vercel.
+3. Confirm the correct project root and routing configuration.
+4. Configure the environment variables required by the application.
+5. Redeploy and inspect the deployment logs.
+
+Potential environment variables include:
+
+| Variable             | Purpose                              |
+| -------------------- | ------------------------------------ |
+| `NODE_ENV`           | Runtime environment                  |
+| `MONGO_URI`          | MongoDB connection string            |
+| `JWT_ACCESS_SECRET`  | Access-token signing secret          |
+| `JWT_REFRESH_SECRET` | Refresh-token signing secret         |
+| `CLIENT_URL`         | Allowed frontend origin              |
+| `CLOUDINARY_*`       | Image hosting configuration, if used |
+| `RAZORPAY_*`         | Payment configuration, if used       |
+
+Use the exact variable names required by the application code. Keep secrets in Vercel environment settings, not in the source code.
+
+## 4. Frontend Deployment on Vercel
+
+The frontend is deployed at:
+
+[https://cognevance-veloura-rywd.vercel.app/](https://cognevance-veloura-rywd.vercel.app/)
+
+To update it:
+
+1. Push the latest frontend changes to GitHub.
+2. Open the frontend project in Vercel.
+3. Confirm that the root directory is set to `client` if the frontend is deployed separately.
+4. Set `VITE_API_URL` to the backend base URL expected by the existing API client.
+5. Redeploy and test the website.
+
+The current backend base URL is:
+
+`https://cognevance-veloura.vercel.app`
+
+Check the existing API client before changing `VITE_API_URL`; some configurations expect a base URL without `/api`, while others include it.
+
+## 5. Frontend and Backend Connection
+
+Verify the following after deployment:
+
+- The frontend sends requests to the correct backend.
+- Backend CORS settings allow the deployed frontend origin.
+- Authentication and cookies work across the deployed domains.
+- Both applications use HTTPS.
+- The backend health endpoint responds successfully.
+
+## 6. Razorpay Payments
+
+Use Razorpay test credentials during development.
+
+Verify that payment signatures are checked server-side and that the backend confirms payment before marking an order as paid.
+
+Configure a Razorpay webhook only if the backend implements the corresponding webhook endpoint. Confirm the actual endpoint in the code before registering it in the Razorpay dashboard.
+
+Never expose payment secret keys in frontend code or public documentation.
+
+## 7. Deployment Testing Checklist
+
+- [ ] Frontend loads successfully.
+- [ ] Backend health endpoint responds.
+- [ ] Product listing and product details work.
+- [ ] Registration and login work.
+- [ ] Wishlist operations work.
+- [ ] Cart and order creation work.
+- [ ] Coupon validation works.
+- [ ] Payment verification works in test mode, if configured.
+- [ ] Admin dashboard is restricted to authorized administrators.
+- [ ] Product image uploads work, if configured.
+- [ ] Environment variables are configured securely.
+- [ ] Demo credentials are changed before production use.
+
+## 8. Troubleshooting
+
+**Frontend cannot reach the API**
+
+- Verify `VITE_API_URL`.
+- Check the browser console and network requests.
+- Confirm that the backend is deployed and CORS allows the frontend origin.
+
+**API returns an error**
+
+- Review Vercel deployment logs.
+- Check MongoDB connectivity and environment variables.
+- Verify API routing configuration.
+
+**Authentication fails**
+
+- Check token handling, cookie settings, HTTPS, and CORS configuration.
+
+**Image upload fails**
+
+- Verify upload middleware and Cloudinary settings, if applicable.
+
+**Payment verification fails**
+
+- Check the Razorpay test credentials and server-side verification logic.
+
+## 9. Security Notes
+
+- Never commit `.env` files or private credentials.
+- Use strong administrator passwords and random JWT secrets.
+- Verify payment status on the backend.
+- Validate order ownership and administrator permissions.
+- Avoid exposing sensitive customer data.
