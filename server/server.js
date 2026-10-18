@@ -26,7 +26,16 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(compression());
-app.use(cors({ origin: (process.env.CLIENT_URL || 'http://localhost:5173').split(','), credentials: true }));
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://cognevance-veloura-rywd.vercel.app',
+  ...(process.env.CLIENT_URL || '').split(',').map(url => url.trim()).filter(Boolean)
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 let dbPromise;
 const ready = () => (dbPromise ??= connectDB());
