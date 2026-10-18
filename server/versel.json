@@ -1,1 +1,7 @@
-{ "rewrites": [{ "source": "/(.*)", "destination": "/api" }] }
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://cognevance-veloura.vercel.app/api/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://cognevance-veloura.vercel.app/uploads/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
